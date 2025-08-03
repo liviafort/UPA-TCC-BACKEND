@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam } from '@nestjs/swagger';
 import { QueueService } from './queue.service';
 import { UpaQueueDataDto } from './dto/queue-stats.dto';
 
@@ -52,5 +52,37 @@ export class QueueController {
     const end = endDate ? new Date(endDate) : undefined;
     
     return await this.queueService.getUpaStatistics(upaId, start, end);
+  }
+
+  @Get(':upaId/queue-distribution')
+  @ApiOperation({ summary: 'Obter distribuição de pacientes por classificação' })
+  @ApiParam({ name: 'upaId', description: 'ID da UPA' })
+  async getQueueDistribution(@Param('upaId') upaId: string) {
+    return this.queueService.getQueueDistribution(upaId);
+  }
+
+  @Get(':upaId/queue-percentages')
+  @ApiOperation({ summary: 'Obter percentual de pacientes por classificação' })
+  @ApiParam({ name: 'upaId', description: 'ID da UPA' })
+  async getQueuePercentages(@Param('upaId') upaId: string) {
+    return this.queueService.getQueuePercentages(upaId);
+  }
+
+  @Get(':upaId/queue-evolution')
+  @ApiOperation({ summary: 'Obter evolução da fila nos últimos dias' })
+  @ApiParam({ name: 'upaId', description: 'ID da UPA' })
+  @ApiQuery({ name: 'days', required: false, description: 'Número de dias para análise', type: Number })
+  async getQueueEvolution(
+    @Param('upaId') upaId: string,
+    @Query('days') days: number = 7
+  ) {
+    return this.queueService.getQueueEvolution(upaId, days);
+  }
+
+  @Get(':upaId/current-wait-times')
+  @ApiOperation({ summary: 'Obter tempos médios de espera atuais' })
+  @ApiParam({ name: 'upaId', description: 'ID da UPA' })
+  async getCurrentWaitTimes(@Param('upaId') upaId: string) {
+    return this.queueService.getCurrentWaitTimes(upaId);
   }
 }

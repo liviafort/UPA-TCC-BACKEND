@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { UpaQueueDataDto, ClassificacaoStatsDto } from './dto/queue-stats.dto';
 import { PrismaClient, PatientStatusEnum, ClassificacaoTriagem } from '@prisma/client';
+import { Classification, QueueDistribution, QueueEvolutionData, QueueResponse } from './types/types';
 
 @Injectable()
 export class QueueService {
@@ -14,7 +15,6 @@ export class QueueService {
   async getUpaQueueData(upaId: string): Promise<UpaQueueDataDto> {
     this.logger.log(`Gerando dados da fila para UPA: ${upaId}`);
 
-    // Buscar pacientes em espera
     const patientsInQueue = await this.prisma.patientStatus.findMany({
       where: {
         upa_id: upaId,
@@ -24,7 +24,6 @@ export class QueueService {
       },
     });
 
-    // Estatísticas por classificação
     const classificacoes: ClassificacaoStatsDto = {
       verde: 0,
       amarelo: 0,
@@ -150,7 +149,6 @@ export class QueueService {
       where,
     });
 
-    // Calcular estatísticas básicas
     const totalEventos = events.length;
     const entradas = events.filter(e => e.event_type === 'ENTRADA').length;
     const triagens = events.filter(e => e.event_type === 'TRIAGEM').length;
@@ -169,4 +167,159 @@ export class QueueService {
       taxa_conclusao: entradas > 0 ? Math.round((atendimentos / entradas) * 100) : 0,
     };
   }
+
+  async getQueueDistribution(upaId: string): Promise<QueueResponse & { distribution: QueueDistribution }> {
+    const patients = await this.prisma.patientStatus.findMany({
+      where: { 
+        upa_id: upaId,
+        OR: [
+          { status: 'WAITING_TRIAGE' },
+          { status: 'WAITING_CARE' }
+        ]
+      }
+    });
+
+    const distribution = patients.reduce((acc: Record<Classification, { count: number; total_wait: number }>, patient) => {
+      const classification = (patient.classificacao as Classification) || 'NAO_TRIADO';
+      
+      if (!acc[classification]) {
+        acc[classification] = { count: 0, total_wait: 0 };
+      }
+      
+      acc[classification].count++;
+      
+      const startTime = patient.status === 'WAITING_TRIAGE' 
+        ? patient.entrada_timestamp 
+        : patient.triagem_timestamp;
+      
+      if (startTime) {
+        const waitMinutes = (Date.now() - startTime.getTime()) / (1000 * 60);
+        acc[classification].total_wait += waitMinutes;
+      }
+      
+      return acc;
+    }, {} as Record<Classification, { count: number; total_wait: number }>);
+
+    const result = Object.fromEntries(
+      Object.entries(distribution).map(([classification, data]) => [
+        classification,
+        {
+          count: data.count,
+          average_wait: data.count > 0 ? Math.round(data.total_wait / data.count) : 0
+        }
+      ])
+    ) as QueueDistribution;
+
+    return {
+      upa_id: upaId,
+      distribution: result,
+      last_updated: new Date().toISOString()
+    };
+  }
+
+  async getQueuePercentages(upaId: string) {
+    const { distribution } = await this.getQueueDistribution(upaId);
+    const total = Object.values(distribution).reduce((sum, item) => sum + item.count, 0);
+    
+    const percentages = Object.fromEntries(
+      Object.entries(distribution).map(([classification, data]) => [
+        classification,
+        parseFloat(((data.count / total) * 100).toFixed(1))
+      ])
+    );
+    
+    return {
+      upa_id: upaId,
+      percentages,
+      total_patients: total,
+      last_updated: new Date().toISOString()
+    };
+  }
+
+  async getQueueEvolution(upaId: string, days: number = 7): Promise<QueueResponse & { period: string; data: QueueEvolutionData[] }> {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const events = await this.prisma.patientEvent.findMany({
+      where: {
+        upa_id: upaId,
+        timestamp: {
+          gte: startDate,
+          lte: endDate
+        }
+      },
+      orderBy: {
+        timestamp: 'asc'
+      }
+    });
+
+    const dailyData = events.reduce((acc: Record<string, Omit<QueueEvolutionData, 'date'> & { wait_times: number[] }>, event) => {
+      const dateStr = event.timestamp.toISOString().split('T')[0];
+      
+      if (!acc[dateStr]) {
+        acc[dateStr] = {
+          entradas: 0,
+          triagens: 0,
+          atendimentos: 0,
+          max_wait_time: 0,
+          wait_times: []
+        };
+      }
+      
+      if (event.event_type === 'ENTRADA') acc[dateStr].entradas++;
+      if (event.event_type === 'TRIAGEM') acc[dateStr].triagens++;
+      if (event.event_type === 'ATENDIMENTO') acc[dateStr].atendimentos++;
+      
+      if (event.event_type === 'ATENDIMENTO') {
+        const entradaEvent = events.find(e => 
+          e.patient_id === event.patient_id && 
+          e.event_type === 'ENTRADA'
+        );
+        
+        if (entradaEvent) {
+          const waitTime = (event.timestamp.getTime() - entradaEvent.timestamp.getTime()) / (1000 * 60);
+          acc[dateStr].wait_times.push(waitTime);
+        }
+      }
+      
+      return acc;
+    }, {});
+
+    const response = Object.entries(dailyData).map(([date, data]) => ({
+      date,
+      entradas: data.entradas,
+      triagens: data.triagens,
+      atendimentos: data.atendimentos,
+      max_wait_time: data.wait_times.length > 0 
+        ? Math.round(Math.max(...data.wait_times))
+        : 0
+    }));
+
+    return {
+      upa_id: upaId,
+      period: `${days} days`,
+      data: response,
+      last_updated: new Date().toISOString()
+    };
+  }
+
+  async getCurrentWaitTimes(upaId: string) {
+    const { distribution } = await this.getQueueDistribution(upaId);
+    
+    const waitTimes = Object.fromEntries(
+      Object.entries(distribution).map(([classification, data]) => [
+        classification,
+        data.average_wait
+      ])
+    );
+    
+    return {
+      upa_id: upaId,
+      wait_times: waitTimes,
+      last_updated: new Date().toISOString()
+    };
+  }
+
+
 }
