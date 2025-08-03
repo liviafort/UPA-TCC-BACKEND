@@ -8,9 +8,6 @@ export class ClassificacaoStatsDto {
   @ApiProperty({ example: 8 })
   amarelo: number;
 
-  @ApiProperty({ example: 3 })
-  laranja: number;
-
   @ApiProperty({ example: 2 })
   vermelho: number;
 

@@ -78,7 +78,6 @@ enum EventType {
 enum ClassificacaoTriagem {
   VERDE
   AMARELO
-  LARANJA
   VERMELHO
   AZUL
 }

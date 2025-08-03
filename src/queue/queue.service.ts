@@ -28,7 +28,6 @@ export class QueueService {
     const classificacoes: ClassificacaoStatsDto = {
       verde: 0,
       amarelo: 0,
-      laranja: 0,
       vermelho: 0,
       azul: 0,
       sem_triagem: 0,
