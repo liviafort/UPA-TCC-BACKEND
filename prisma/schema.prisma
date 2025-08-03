@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuthToken {
+  id           String     @id @default(uuid())
+  token        String     @unique
+  name         String
+  institution  String
+  is_active    Boolean    @default(true)
+  permissions  String[]
+  expires_at   DateTime?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  @@map("auth_tokens")
+}
+
+model Upa {
+  id             String        @id @default(uuid())
+  name           String        @unique
+  address        String
+  latitude       Float
+  longitude      Float
+  is_active      Boolean       @default(true)
+  operating_hours Json?
+  events         PatientEvent[]
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  @@map("upas")
+}
+
+model PatientEvent {
+  id             String     @id @default(uuid())
+  patient_id     String
+  upa_id         String
+  event_type     EventType
+  bairro         String?
+  classificacao  ClassificacaoTriagem?
+  timestamp      DateTime
+  received_at    DateTime   @default(now())
+  created_at     DateTime   @default(now())
+  upa            Upa        @relation(fields: [upa_id], references: [name])
+  
+  @@index([patient_id, event_type, upa_id])
+  @@index([upa_id, timestamp])
+  @@map("patient_events")
+}
+
+model PatientStatus {
+  id                     String               @id @default(uuid())
+  patient_id             String
+  upa_id                 String
+  bairro                 String?
+  status                 PatientStatusEnum
+  classificacao          ClassificacaoTriagem?
+  entrada_timestamp      DateTime?
+  triagem_timestamp      DateTime?
+  atendimento_timestamp  DateTime?
+  created_at             DateTime             @default(now())
+  updated_at             DateTime             @updatedAt
+
+  @@map("patient_status")
+}
+
+enum EventType {
+  ENTRADA
+  TRIAGEM
+  ATENDIMENTO
+}
+
+enum ClassificacaoTriagem {
+  VERDE
+  AMARELO
+  LARANJA
+  VERMELHO
+  AZUL
+}
+
+enum PatientStatusEnum {
+  WAITING_TRIAGE
+  WAITING_CARE
+  COMPLETED
+}
