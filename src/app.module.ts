@@ -17,7 +17,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PrismaModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'sua-chave-secreta-aqui',
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '24h' },
     }),
     AuthModule,
