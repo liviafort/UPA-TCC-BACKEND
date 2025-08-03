@@ -6,7 +6,6 @@ import { AuthGuard } from '../auth/auth.guard';
 
 @ApiTags('events')
 @Controller('events')
-@UseGuards(AuthGuard)
 @ApiBearerAuth()
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
