@@ -11,8 +11,10 @@ async function bootstrap() {
   
   // Configuração CORS
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
+    origin: true,
+    methods: 'GET, POST, DELETE, PUT, PATCH',
     credentials: true,
+    allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, Access-Control-Allow-Origin',
   });
 
   // Validação global
