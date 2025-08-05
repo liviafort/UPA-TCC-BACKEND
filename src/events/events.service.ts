@@ -23,7 +23,7 @@ export class EventsService {
     this.logger.log(`Processando evento: ${eventDto.event_type} para paciente ${eventDto.patient_id} na UPA ${eventDto.upa_id}`);
 
     // Verificar se a UPA existe
-    await this.upasService.findByName(eventDto.upa_id);
+    await this.upasService.findById(eventDto.upa_id);
 
     // Validar sequência de eventos
     await this.validateEventSequence(eventDto);

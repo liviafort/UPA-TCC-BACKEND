@@ -29,6 +29,18 @@ export class UpasService {
     return upa;
   }
 
+  async findById(id: string): Promise<Upa> {
+    const upa = await this.prisma.upa.findFirst({
+      where: { id, is_active: true },
+    });
+
+    if (!upa) {
+      throw new NotFoundException(`UPA '${id}' não encontrada`);
+    }
+
+    return upa;
+  }
+
   async createUpa(data: {
     name: string;
     address: string;
