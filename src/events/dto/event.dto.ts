@@ -51,6 +51,7 @@ export class EventDto {
     example: '2024-05-20T14:30:00Z',
     description: 'Timestamp do evento no formato ISO 8601'
   })
+  @IsOptional()
   @IsISO8601()
-  timestamp: string;
+  timestamp?: string;
 }

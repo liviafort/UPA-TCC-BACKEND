@@ -50,7 +50,7 @@ export class EventsService {
       orderBy: { timestamp: 'asc' },
     });
 
-    const eventTimestamp = new Date(eventDto.timestamp);
+    const eventTimestamp = eventDto.timestamp ? new Date(eventDto.timestamp) : new Date();
 
     switch (eventDto.event_type) {
       case EventType.ENTRADA:
@@ -128,7 +128,7 @@ export class EventsService {
         event_type: eventDto.event_type,
         bairro: eventDto.bairro,
         classificacao: eventDto.classificacao,
-        timestamp: new Date(eventDto.timestamp),
+        timestamp: eventDto.timestamp ? new Date(eventDto.timestamp) : new Date(),
       },
     });
   }
@@ -141,7 +141,7 @@ export class EventsService {
       },
     });
 
-    const eventTimestamp = new Date(eventDto.timestamp);
+    const eventTimestamp = eventDto.timestamp ? new Date(eventDto.timestamp) : new Date();
 
     switch (eventDto.event_type) {
       case EventType.ENTRADA:
