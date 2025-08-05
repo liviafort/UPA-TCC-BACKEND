@@ -46,7 +46,7 @@ model PatientEvent {
   timestamp      DateTime
   received_at    DateTime   @default(now())
   created_at     DateTime   @default(now())
-  upa            Upa        @relation(fields: [upa_id], references: [name])
+  upa            Upa        @relation(fields: [upa_id], references: [id])
   
   @@index([patient_id, event_type, upa_id])
   @@index([upa_id, timestamp])
