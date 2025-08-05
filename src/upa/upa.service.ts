@@ -30,16 +30,34 @@ export class UpasService {
   }
 
   async findById(id: string): Promise<Upa> {
-    const upa = await this.prisma.upa.findFirst({
-      where: { id, is_active: true },
+  this.logger.debug(`Iniciando busca por UPA: ${id}`);
+  
+  try {
+    // Primeiro, verificar se existe (independente do is_active)
+    const upaRaw = await this.prisma.upa.findUnique({
+      where: { id }
     });
-
-    if (!upa) {
-      throw new NotFoundException(`UPA '${id}' não encontrada`);
+    
+    this.logger.debug(`Resultado da busca única: ${JSON.stringify(upaRaw)}`);
+    
+    if (!upaRaw) {
+      this.logger.error(`UPA não encontrada no banco: ${id}`);
+      throw new NotFoundException(`UPA '${id}' não encontrada no banco de dados`);
     }
-
-    return upa;
+    
+    if (!upaRaw.is_active) {
+      this.logger.error(`UPA encontrada mas inativa: ${id}`);
+      throw new NotFoundException(`UPA '${id}' está inativa`);
+    }
+    
+    this.logger.debug(`UPA encontrada e ativa: ${upaRaw.name}`);
+    return upaRaw;
+    
+  } catch (error) {
+    this.logger.error(`Erro ao buscar UPA ${id}:`, error);
+    throw error;
   }
+}
 
   async createUpa(data: {
     name: string;
